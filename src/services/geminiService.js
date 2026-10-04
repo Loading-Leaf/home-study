@@ -4,38 +4,37 @@
  */
 
 export async function generateGeminiStudyInsight(userProfile, studyLogs, customApiKey = "") {
-  // Use provided custom API key or default environment key
-  const apiKey = customApiKey || import.meta.env.VITE_GEMINI_API_KEY || "";
+  // Use provided custom API key or default environment key, ensuring no leading/trailing whitespace
+  const rawKey = customApiKey || import.meta.env.VITE_GEMINI_API_KEY || "";
+  const apiKey = rawKey.trim().replace(/^["']|["']$/g, '');
   
   const recentLogsText = studyLogs.slice(0, 10).map(log => 
     `- 日付: ${log.date}, 科目: ${log.subject}, 時間: ${log.durationMinutes}分, メモ: ${log.notes || 'なし'}`
   ).join("\n");
 
   const promptText = `
-あなたは熱心で知識豊富なAI学習コーチ「Gemini Study Assistant」です。
-以下の学習者の情報と最近の学習記録を分析し、パーソナライズされた励まし、進捗の評価、改善アドバイス、および来週に向けた提案を日本語で出力してください。
+あなたは熱心で効率的なAI学習コーチ「Gemini Study Assistant」です。
+以下の学習者情報と学習ログを分析し、**全体で300〜400文字程度に簡潔にまとめたアドバイス**を出力してください。長文にならず、要点を絞って端的に回答してください。
 
 【受講者プロファイル】
 ・お名前: ${userProfile.name}
 ・所属: ${userProfile.affiliation}
 ・現在の目標: ${userProfile.targetGoal}
-・週間目標学習時間: ${userProfile.targetStudyHours}時間 (設定範囲: 3〜15時間)
+・週間目標学習時間: ${userProfile.targetStudyHours}時間
 ・現在の学習状況: ${userProfile.studyStatus}
 
-【累積/直近の学習実績】
-・本日の学習時間: ${userProfile.dailyHours}時間
+【直近の学習実績】
 ・今週の学習時間: ${userProfile.weeklyHours}時間 / ${userProfile.targetStudyHours}時間 (達成率: ${Math.round((userProfile.weeklyHours / (userProfile.targetStudyHours || 1)) * 100)}%)
 ・累計学習時間: ${userProfile.totalHours}時間
 
-【直近の学習ログ (最大10件)】
+【直近の学習ログ】
 ${recentLogsText || "まだ学習ログが記録されていません。"}
 
-【出力フォーマット】
-以下の構成でマークダウン形式で回答してください:
-1. 🌟 **全体の評価と称賛** (達成率と取り組みへのポジティブなフィードバック)
-2. 📊 **学習パターンの分析** (科目バランスや時間配置に関する考察)
-3. 🎯 **目標達成へのアドバイス** (具体的に効率を上げるためのヒント)
-4. 🚀 **来週へのアクションプラン** (明日・来週から試すべき具体的な1-2のアクション)
+【出力フォーマット (各項目1〜2文で簡潔に記述)】
+1. 🌟 **評価と称賛**: 達成率へのポジティブなフィードバック（1文）
+2. 📊 **学習パターンの分析**: 科目バランスの短評（1〜2文）
+3. 🎯 **アドバイス**: 効率化のワンポイントヒント（1文）
+4. 🚀 **来週へのアクション**: 来週試すべき具体的な行動1つ（1文）
 `;
 
   if (!apiKey) {
@@ -44,21 +43,21 @@ ${recentLogsText || "まだ学習ログが記録されていません。"}
   }
 
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: promptText }] }],
         generationConfig: {
           temperature: 0.7,
-          maxOutputTokens: 1000
+          maxOutputTokens: 2000
         }
       })
     });
 
     if (!response.ok) {
-      const errData = await response.json();
-      console.warn("Gemini API call failed, falling back to local insight engine:", errData);
+      const errData = await response.json().catch(() => ({}));
+      console.warn(`Gemini API call failed (${response.status} ${response.statusText}):`, errData);
       return generateFallbackInsight(userProfile, studyLogs);
     }
 

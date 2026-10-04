@@ -155,10 +155,6 @@ export function renderDashboard(container, profile, studyLogs) {
               <span>✨</span> ${generatingAi ? 'Gemini分析中...' : 'Gemini AI 学習評価・インサイト生成'}
             </button>
           </div>
-
-          <button id="api-key-config-btn" class="btn btn-outline btn-sm" style="font-size: 0.8rem;">
-            ⚙️ Gemini APIキー設定 (${customApiKey ? '設定済み' : '自動評価'})
-          </button>
         </div>
 
         <!-- Content Grid: Left (Gemini Insight & Logs), Right (Breakdown & Weekly Schedule) -->
@@ -285,16 +281,6 @@ export function renderDashboard(container, profile, studyLogs) {
 
     container.querySelector('#generate-ai-btn')?.addEventListener('click', runAiHandler);
     container.querySelector('#re-generate-ai-btn')?.addEventListener('click', runAiHandler);
-
-    // API Key config modal trigger
-    container.querySelector('#api-key-config-btn').addEventListener('click', () => {
-      const key = prompt("Gemini APIキーを入力してください (未設定の場合は内蔵AI評価エンジンが稼働します):", customApiKey);
-      if (key !== null) {
-        customApiKey = key.trim();
-        localStorage.setItem("custom_gemini_api_key", customApiKey);
-        update();
-      }
-    });
   }
 
   update();
